@@ -46,11 +46,7 @@ describe('CREDIT-TC-693 — Partial Interest Repayment: Remaining Interest Carri
     remainingInterest = recordDay2.UnpaidOverdraftInterest - halfInterest;
     // console.log(`  [TC-693] Total interest: ${recordDay2.UnpaidOverdraftInterest} | Half repaid: ${halfInterest} | Remaining: ${remainingInterest}`);
 
-    await api.makeRepayment({
-      linkedAccountNumber: account.linkedAccountNumber,
-      amount:              halfInterest,
-      instrumentNumber:    generateInstrumentNumber(),
-    });
+    await api.makeRepayment(account.linkedAccountNumber, halfInterest, generateInstrumentNumber());
 
     // Wait for repayment to be processed
     searchAfterRepayment = await api.waitForRepaymentProcessed({

@@ -28,7 +28,7 @@ beforeAll(async () => {
   const stmt1      = await db.getOverdraftStatement(account.odAccountNumber, dates.statementStampDate);
   const bucket1Pay = stmt1?.MinimumPaymentBalance ?? account.searchResponse.paymentDueInfo?.[0]?.minimumPaymentBalance;
   console.log(`  [TC-1996] Bucket 1 only payment: ${bucket1Pay}`);
-  await api.makeRepayment({ linkedAccountNumber: account.linkedAccountNumber, amount: bucket1Pay, instrumentNumber: generateInstrumentNumber() });
+  await api.makeRepayment(account.linkedAccountNumber, bucket1Pay, generateInstrumentNumber());
   const expectedBalance = account.searchResponse.overdrawnAmount - bucket1Pay;
   await api.waitForRepaymentProcessed({ accountNumber: account.odAccountNumber, expectedBalance });
 

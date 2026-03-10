@@ -29,7 +29,7 @@ beforeAll(async () => {
   const bucket1Only = parseFloat((statement.MinimumPaymentBalance * 0.5).toFixed(2));
   console.log(`  [TC-722] Bucket 1 partial payment: ${bucket1Only}`);
 
-  await api.makeRepayment({ linkedAccountNumber: account.linkedAccountNumber, amount: bucket1Only, instrumentNumber: generateInstrumentNumber() });
+  await api.makeRepayment(account.linkedAccountNumber, bucket1Only, generateInstrumentNumber());
   const expectedBalance = account.searchResponse.overdrawnAmount - bucket1Only;
   await api.waitForRepaymentProcessed({ accountNumber: account.odAccountNumber, expectedBalance });
 

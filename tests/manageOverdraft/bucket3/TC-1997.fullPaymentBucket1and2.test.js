@@ -31,7 +31,7 @@ beforeAll(async () => {
   const payment  = dueInfos.slice(0, 2).reduce((s, p) => s + p.minimumPaymentBalance, 0)
                 || parseFloat((account.searchResponse.overdrawnAmount * 0.4).toFixed(2));
   console.log(`  [TC-1997] Bucket 1+2 payment: ${payment}`);
-  await api.makeRepayment({ linkedAccountNumber: account.linkedAccountNumber, amount: payment, instrumentNumber: generateInstrumentNumber() });
+  await api.makeRepayment(account.linkedAccountNumber, payment, generateInstrumentNumber());
   await api.waitForRepaymentProcessed({ accountNumber: account.odAccountNumber, expectedBalance: account.searchResponse.overdrawnAmount - payment });
 
   const nextDay = dayjs(dpd61Date).add(1, 'day').format('YYYY-MM-DD');

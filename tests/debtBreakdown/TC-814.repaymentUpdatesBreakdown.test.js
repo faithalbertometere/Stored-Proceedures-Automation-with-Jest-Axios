@@ -32,11 +32,7 @@ describe('CREDIT-TC-814 — Repayment Updates OverdraftDebtBreakdown', () => {
 
     // Partial repayment
     console.log(`  [TC-814] Partial repayment: ${PARTIAL_REPAYMENT}`);
-    await api.makeRepayment({
-      linkedAccountNumber: account.linkedAccountNumber,
-      amount:              PARTIAL_REPAYMENT,
-      instrumentNumber:    generateInstrumentNumber(),
-    });
+    await api.makeRepayment(account.linkedAccountNumber, PARTIAL_REPAYMENT, generateInstrumentNumber());
 
     // Wait for background worker to process the repayment
     const expectedBalance = account.searchResponse.overdrawnAmount - PARTIAL_REPAYMENT;

@@ -44,12 +44,8 @@ describe('CREDIT-TC-692 — Interest-Only Repayment: Principal Remains, New Inte
     // Repay exact interest amount only — principal untouched
     interestRepaid = recordDay2.UnpaidOverdraftInterest;
     console.log(`  [TC-692] Interest-only repayment: ${interestRepaid}`);
-    await api.makeRepayment({
-      linkedAccountNumber: account.linkedAccountNumber,
-      amount:              interestRepaid,
-      instrumentNumber:    generateInstrumentNumber(),
-    });
-
+    await api.makeRepayment(account.linkedAccountNumber, interestRepaid, generateInstrumentNumber());
+   
     // Wait for repayment to be processed
     searchAfterRepayment = await api.waitForRepaymentProcessed({
       accountNumber:   account.odAccountNumber,

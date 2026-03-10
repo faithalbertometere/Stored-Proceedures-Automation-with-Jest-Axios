@@ -38,6 +38,7 @@
 
 const dayjs = require('dayjs');
 const db    = require('./dbHelper');
+const config = require('../config');
 
 // ─────────────────────────────────────────────
 // Proc name constants
@@ -146,12 +147,12 @@ async function continueEODUntil({ lastDate, toDate, procs, stopOnFailure = true 
  */
 function getNextStatementRunDate(fromDate, statementDay, monthsAhead = 1) {
   // Statement is stamped on statementDay, but proc runs on statementDay - 1
-  let candidate = dayjs(fromDate).date(statementDay);
-  if (candidate.isBefore(dayjs(fromDate), 'day') || candidate.isSame(dayjs(fromDate), 'day')) {
-    candidate = candidate.add(monthsAhead, 'month');
+  let nextstatementdate = dayjs(fromDate).date(statementDay);
+  if (nextstatementdate.isBefore(dayjs(fromDate), 'day') || nextstatementdate.isSame(dayjs(fromDate), 'day')) {
+    nextstatementdate = nextstatementdate.add(monthsAhead, 'month');
   }
   // Return the day BEFORE the statement stamp date (the actual EOD run date)
-  return candidate.subtract(1, 'day').format('YYYY-MM-DD');
+  return nextstatementdate.subtract(1, 'day').format('YYYY-MM-DD');
 }
 
 /**

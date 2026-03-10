@@ -38,7 +38,7 @@ beforeAll(async () => {
   // Small partial payment (5% — not enough to clear any bucket)
   const smallPayment = parseFloat((account.searchResponse.overdrawnAmount * 0.05).toFixed(2));
   console.log(`  [TC-2009] Small partial payment: ${smallPayment}`);
-  await api.makeRepayment({ linkedAccountNumber: account.linkedAccountNumber, amount: smallPayment, instrumentNumber: generateInstrumentNumber() });
+  await api.makeRepayment(account.linkedAccountNumber, smallPayment, generateInstrumentNumber());
   await api.waitForRepaymentProcessed({ accountNumber: account.odAccountNumber, expectedBalance: account.searchResponse.overdrawnAmount - smallPayment });
 
   const nextDay1 = dayjs(dpd31Date).add(1, 'day').format('YYYY-MM-DD');
@@ -49,7 +49,7 @@ beforeAll(async () => {
   const stmt1        = await db.getOverdraftStatement(account.odAccountNumber, dates.statementStampDate);
   const bucket1Full  = stmt1?.MinimumPaymentBalance ?? account.searchResponse.paymentDueInfo?.[0]?.minimumPaymentBalance;
   console.log(`  [TC-2009] Full Bucket 1 + partial Bucket 2 payment: ${bucket1Full}`);
-  await api.makeRepayment({ linkedAccountNumber: account.linkedAccountNumber, amount: bucket1Full, instrumentNumber: generateInstrumentNumber() });
+  await api.makeRepayment(account.linkedAccountNumber, bucket1Full, generateInstrumentNumber());
   await api.waitForRepaymentProcessed({ accountNumber: account.odAccountNumber, expectedBalance: stateAfterSmallPayment.searchResponse.overdrawnAmount - bucket1Full });
 
   const nextDay2 = dayjs(nextDay1).add(1, 'day').format('YYYY-MM-DD');

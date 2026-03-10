@@ -34,12 +34,7 @@ describe('CREDIT-TC-689 — No Interest Accrual After Full Repayment', () => {
       
       // Full repayment (principal + accrued interest)
       const totalOwed = account.searchResponse.overdrawnAmount + recordDay1.UnpaidOverdraftInterest;
-      console.log(`  [TC-689] Full repayment: ${totalOwed}`);
-      await api.makeRepayment({
-        linkedAccountNumber: account.linkedAccountNumber,
-        amount:              totalOwed,
-        instrumentNumber:    generateInstrumentNumber(),
-      });
+      await api.makeRepayment(account.linkedAccountNumber, totalOwed, generateInstrumentNumber());
     
       // Wait for background worker to process the repayment
       searchAfterRepayment = await api.waitForRepaymentProcessed({

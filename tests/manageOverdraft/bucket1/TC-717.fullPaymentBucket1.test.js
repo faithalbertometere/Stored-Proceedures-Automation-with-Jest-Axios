@@ -25,11 +25,7 @@ beforeAll(async () => {
   const minPayment = statement?.MinimumPaymentBalance ?? account.searchResponse.paymentDueInfo?.[0]?.minimumPaymentBalance;
   console.log(`  [TC-717] Full minimum payment: ${minPayment}`);
 
-  await api.makeRepayment({
-    linkedAccountNumber: account.linkedAccountNumber,
-    amount:              minPayment,
-    instrumentNumber:    generateInstrumentNumber(),
-  });
+  await api.makeRepayment(account.linkedAccountNumber, minPayment, generateInstrumentNumber());
 
   const expectedBalance = account.searchResponse.overdrawnAmount - minPayment;
   await api.waitForRepaymentProcessed({ accountNumber: account.odAccountNumber, expectedBalance });

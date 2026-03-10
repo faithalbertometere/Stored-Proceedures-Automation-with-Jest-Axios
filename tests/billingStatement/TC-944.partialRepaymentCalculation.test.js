@@ -25,11 +25,7 @@ describe('CREDIT-TC-944 — Minimum Payment Calculation for Partial Repayment', 
 
     // Partial repayment
     console.log(`  [TC-944] Partial repayment: ${PARTIAL_REPAYMENT}`);
-    await api.makeRepayment({
-      linkedAccountNumber: account.linkedAccountNumber,
-      amount:              PARTIAL_REPAYMENT,
-      instrumentNumber:    generateInstrumentNumber(),
-    });
+    await api.makeRepayment(account.linkedAccountNumber, PARTIAL_REPAYMENT, generateInstrumentNumber());
 
     // Wait for background worker to apply repayment
     const expectedBalance = account.searchResponse.overdrawnAmount - PARTIAL_REPAYMENT;

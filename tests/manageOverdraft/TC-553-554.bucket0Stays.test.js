@@ -37,11 +37,7 @@ describe('CREDIT-TC-553 — Bucket 0 When Minimum Payment Made on Time', () => {
     const minPayment = statement?.MinimumPaymentBalance ?? account.searchResponse.paymentDueInfo?.[0]?.minimumPaymentBalance;
     console.log(`  [TC-553] Making minimum payment: ${minPayment}`);
 
-    await api.makeRepayment({
-      linkedAccountNumber: account.linkedAccountNumber,
-      amount:              minPayment,
-      instrumentNumber:    generateInstrumentNumber(),
-    });
+    await api.makeRepayment(account.linkedAccountNumber, minPayment, generateInstrumentNumber());
 
     // Wait for worker to process repayment
     const expectedBalance = account.searchResponse.overdrawnAmount - minPayment;
@@ -90,11 +86,7 @@ describe('CREDIT-TC-554 — Bucket 0 When No Outstanding Debt at End of Cycle', 
     const totalOwed  = search.overdrawnAmount + search.accruedODInterest;
     console.log(`  [TC-554] Full repayment: ${totalOwed}`);
 
-    await api.makeRepayment({
-      linkedAccountNumber: account.linkedAccountNumber,
-      amount:              totalOwed,
-      instrumentNumber:    generateInstrumentNumber(),
-    });
+    await api.makeRepayment(account.linkedAccountNumber, totalOwed, generateInstrumentNumber(),);
 
     await api.waitForRepaymentProcessed({ accountNumber: account.odAccountNumber, expectedBalance: 0 });
 

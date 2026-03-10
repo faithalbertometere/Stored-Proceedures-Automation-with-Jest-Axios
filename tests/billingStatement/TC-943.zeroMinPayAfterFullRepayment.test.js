@@ -25,11 +25,7 @@ describe('CREDIT-TC-943 — Minimum Payment is 0 After Full Repayment', () => {
     // Full repayment before billing EOD runs
     const totalOwed = account.searchResponse.overdrawnAmount + account.searchResponse.accruedODInterest;
     console.log(`  [TC-943] Full repayment: ${totalOwed}`);
-    await api.makeRepayment({
-      linkedAccountNumber: account.linkedAccountNumber,
-      amount:              totalOwed,
-      instrumentNumber:    generateInstrumentNumber(),
-    });
+    await api.makeRepayment( account.linkedAccountNumber, totalOwed, generateInstrumentNumber());
 
     // Wait for background worker to apply repayment
     searchAfterRepayment = await api.waitForRepaymentProcessed({

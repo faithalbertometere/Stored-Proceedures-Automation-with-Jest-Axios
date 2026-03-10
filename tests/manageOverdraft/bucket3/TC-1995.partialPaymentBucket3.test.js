@@ -27,7 +27,7 @@ beforeAll(async () => {
 
   const partial = parseFloat((account.searchResponse.overdrawnAmount * 0.1).toFixed(2));
   console.log(`  [TC-1995] Partial payment (10%): ${partial}`);
-  await api.makeRepayment({ linkedAccountNumber: account.linkedAccountNumber, amount: partial, instrumentNumber: generateInstrumentNumber() });
+  await api.makeRepayment(account.linkedAccountNumber, partial, generateInstrumentNumber());
   const expectedBalance = account.searchResponse.overdrawnAmount - partial;
   await api.waitForRepaymentProcessed({ accountNumber: account.odAccountNumber, expectedBalance });
 

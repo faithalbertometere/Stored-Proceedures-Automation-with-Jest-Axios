@@ -26,7 +26,7 @@ beforeAll(async () => {
   // Make full minimum payment
   const statement  = await db.getOverdraftStatement(account.odAccountNumber, dates.statementStampDate);
   const minPayment = statement?.MinimumPaymentBalance ?? account.searchResponse.paymentDueInfo?.[0]?.minimumPaymentBalance;
-  await api.makeRepayment({ linkedAccountNumber: account.linkedAccountNumber, amount: minPayment, instrumentNumber: generateInstrumentNumber() });
+  await api.makeRepayment(account.linkedAccountNumber, minPayment, generateInstrumentNumber());
 
   const expectedBalance = account.searchResponse.overdrawnAmount - minPayment;
   await api.waitForRepaymentProcessed({ accountNumber: account.odAccountNumber, expectedBalance });

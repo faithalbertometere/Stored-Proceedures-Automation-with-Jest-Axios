@@ -262,6 +262,17 @@ async function deleteDebtHistoryByDate(finDate) {
   console.log(`  [cleanup] Deleted OverdraftDebtHistory records for ${finDate}`);
 }
 
+async function deleteStatementByDate(finDate) {
+  const p = await connect();
+  await p.request()
+    .input('BillingCycleEndDate', sql.Date, new Date(finDate))
+    .query(`
+      DELETE FROM ${config.tables.Statement}
+      WHERE CAST(BillingCycleEndDate AS DATE) >= @BillingCycleEndDate
+    `);
+  console.log(`  [cleanup] Deleted OverdraftStatement records for ${finDate}`);
+}
+
 module.exports = {
   connect,
   disconnect,
@@ -273,5 +284,6 @@ module.exports = {
   getOverdraftStatementRange,
   getGLPostings,
   getActivityLogTotals,
-  deleteDebtHistoryByDate
+  deleteDebtHistoryByDate,
+  deleteStatementByDate
 };

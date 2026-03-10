@@ -27,6 +27,7 @@
     "test:breakdown:814": "jest tests/debtBreakdown/TC-814 --runInBand --verbose",
     "test:billing": "jest tests/billingStatement/ --runInBand --verbose",
     "test:billing:546": "jest tests/billingStatement/TC-546 --runInBand --verbose",
+    "test:billing:547": "jest tests/billingStatement/TC-547 --runInBand --verbose",
     "test:billing:696": "jest tests/billingStatement/TC-696 --runInBand --verbose",
     "test:billing:942": "jest tests/billingStatement/TC-942 --runInBand --verbose",
     "test:billing:943": "jest tests/billingStatement/TC-943 --runInBand --verbose",

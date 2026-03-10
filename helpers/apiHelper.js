@@ -110,7 +110,7 @@ async function searchOverdraft(accountNumber) {
  * @param {number} params.amount               Repayment amount
  * @param {string} params.instrumentNumber     Unique reference
  */
-async function makeRepayment({ linkedAccountNumber, amount, instrumentNumber }) {
+async function makeRepayment(linkedAccountNumber, amount, instrumentNumber) {
   const now = new Date().toISOString();
   return post(
     config.urls.drawdown,   // same endpoint

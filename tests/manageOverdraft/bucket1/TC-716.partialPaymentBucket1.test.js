@@ -30,11 +30,7 @@ beforeAll(async () => {
   console.log(`  [TC-716] Min payment: ${minPayment} | Partial (50%): ${partial}`);
   stateBeforePayment = await fetchBucketState(account.odAccountNumber, dates.dpd1Date);
 
-  await api.makeRepayment({
-    linkedAccountNumber: account.linkedAccountNumber,
-    amount:              partial,
-    instrumentNumber:    generateInstrumentNumber(),
-  });
+  await api.makeRepayment(account.linkedAccountNumber, partial, generateInstrumentNumber());
 
   const expectedBalance = account.searchResponse.overdrawnAmount - partial;
   await api.waitForRepaymentProcessed({ accountNumber: account.odAccountNumber, expectedBalance });

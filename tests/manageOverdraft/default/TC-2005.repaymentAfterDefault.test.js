@@ -32,7 +32,7 @@ beforeAll(async () => {
   const search      = await api.searchOverdraft(account.odAccountNumber);
   const fullPayment = search.overdrawnAmount + search.accruedODInterest;
   console.log(`  [TC-2005] Repayment after default: ${fullPayment}`);
-  await api.makeRepayment({ linkedAccountNumber: account.linkedAccountNumber, amount: fullPayment, instrumentNumber: generateInstrumentNumber() });
+  await api.makeRepayment(account.linkedAccountNumber, fullPayment, generateInstrumentNumber());
   await api.waitForRepaymentProcessed({ accountNumber: account.odAccountNumber, expectedBalance: 0 });
 
   const nextDay = dayjs(dpd91Date).add(1, 'day').format('YYYY-MM-DD');
