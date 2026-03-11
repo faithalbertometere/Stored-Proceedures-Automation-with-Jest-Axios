@@ -35,7 +35,7 @@ describe('CREDIT-TC-546/697 — Right Minimum Payment Based on Formula', () => {
 
     // InterestCharged = 2 days of accrual (cycleStartDate + statementRunDate)
     const interestCharged    = calcDailyInterest(overdrawnAmount, interestRate) * 2;
-    const principalMinPayment = calcMinimumPayment({ principal: overdrawnAmount, minPaymentPct: minimumPaymentPercentage });
+    const principalMinPayment = calcMinimumPayment({ principal: overdrawnAmount, minPaymentRate: minimumPaymentPercentage });
     const totalMinimumPayment = parseFloat((principalMinPayment + interestCharged).toFixed(2));
 
     expected = { principalMinPayment, interestCharged, totalMinimumPayment };

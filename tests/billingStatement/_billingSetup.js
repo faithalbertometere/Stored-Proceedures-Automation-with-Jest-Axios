@@ -37,8 +37,8 @@ function calcDailyInterest(principal, rate) {
 //   return (principal * rate) / 100 / 30 * days;
 // }
 
-function calcMinimumPayment({ principal, minPaymentPct }) {
-  return parseFloat(((minPaymentPct / 100) * principal).toFixed(2));
+function calcMinimumPayment({ principal, minPaymentRate }) {
+  return (minPaymentRate / 100) * principal;
 }
 
 module.exports = { getBillingDates, calcDailyInterest, calcMinimumPayment };
