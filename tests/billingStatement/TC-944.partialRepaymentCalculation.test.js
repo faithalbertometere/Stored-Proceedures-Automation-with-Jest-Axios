@@ -4,16 +4,17 @@
  *
  * Run: npx jest tests/billingStatement/TC-944 --runInBand
  */
-
 const dayjs = require('dayjs');
 const db    = require('../../helpers/dbHelper');
 const api   = require('../../helpers/apiHelper');
-const { runBillingEOD, calcMinimumPayment } = require('./_billingSetup');
+const { getBillingDates, calcMinimumPayment } = require('./_billingSetup');
 const { setupOverdraftAccount } = require('../../fixtures/overdraftSetup');
 const { generateInstrumentNumber } = require('../../data/testData');
+const { PROCS, runEODUntil} = require('../../helpers/eodRunner');
+
 
 const PARTIAL_REPAYMENT = 1000000;
-let account, dates, statement, searchAfterRepayment, expectedAfterRepayment;
+let account, dates, statement, searchAfterRepayment, expectedAfterRepayment, totalMinimumPayment;
 
 beforeAll(async () => { await db.connect(); }, 15_000);
 afterAll(async ()  => { await db.disconnect(); });
@@ -22,9 +23,9 @@ describe('CREDIT-TC-944 — Minimum Payment Calculation for Partial Repayment', 
 
   beforeAll(async () => {
     account = await setupOverdraftAccount({ drawAmount: 3000000 });
+    dates   = getBillingDates(account);
 
     // Partial repayment
-    console.log(`  [TC-944] Partial repayment: ${PARTIAL_REPAYMENT}`);
     await api.makeRepayment(account.linkedAccountNumber, PARTIAL_REPAYMENT, generateInstrumentNumber());
 
     // Wait for background worker to apply repayment
@@ -34,16 +35,13 @@ describe('CREDIT-TC-944 — Minimum Payment Calculation for Partial Repayment', 
       expectedBalance,
     });
 
-    // Run billing EOD based on post-repayment balance
-    dates = await runBillingEOD({ ...account, searchResponse: searchAfterRepayment });
+    cycleRunDate = dates.statementRunDate;
+    await runEODUntil({ fromDate: cycleRunDate, toDate: cycleRunDate, procs: [PROCS.DEBT_HISTORY, PROCS.BILLING_STATEMENT] });
 
-    const { overdrawnAmount, interestRate, minimumPaymentPercentage } = searchAfterRepayment;
-    expectedAfterRepayment = calcMinimumPayment({
+    const { overdrawnAmount, minimumPaymentPercentage } = searchAfterRepayment;
+    totalMinimumPayment = calcMinimumPayment({
       principal:      overdrawnAmount,
-      rate:           interestRate,
-      minPaymentPct:  minimumPaymentPercentage,
-      cycleStartDate: dates.cycleStartDate,
-      cycleEndDate:   dates.cycleEndDate,
+      minPaymentRate:  minimumPaymentPercentage,
     });
 
     statement = await db.getOverdraftStatement(account.odAccountNumber, dates.statementStampDate);
@@ -59,25 +57,27 @@ describe('CREDIT-TC-944 — Minimum Payment Calculation for Partial Repayment', 
   });
 
   test('OutstandingPrincipal = remaining balance after repayment', () => {
-    expect(statement.OutstandingPrincipal).toBeCloseTo(searchAfterRepayment.overdrawnAmount, 2);
+    expect(statement.OutstandingPrincipal).toBe(searchAfterRepayment.overdrawnAmount);
   });
 
   test('TotalMinimumPayment based on remaining principal', () => {
-    expect(statement.TotalMinimumPayment).toBeCloseTo(expectedAfterRepayment.totalMinimumPayment, 2);
+    expect(statement.TotalMinimumPayment).toBe(totalMinimumPayment);
   });
 
-  test('TotalMinimumPayment is less than it would have been without repayment', () => {
-    const fullExpected = calcMinimumPayment({
-      principal:      account.searchResponse.overdrawnAmount,
-      rate:           account.searchResponse.interestRate,
-      minPaymentPct:  account.searchResponse.minimumPaymentPercentage,
-      cycleStartDate: dates.cycleStartDate,
-      cycleEndDate:   dates.cycleEndDate,
-    });
-    expect(statement.TotalMinimumPayment).toBeLessThan(fullExpected.totalMinimumPayment);
+  test('Cycle BillingCycleStartDate = cycle start date', () => {
+    expect(dayjs(statement.BillingCycleStartDate).format('YYYY-MM-DD')).toBe(dates.cycleStartDate);
+  });
+ 
+  test('API paymentDueInfo[0].paymentDueDate matches expected', async() => {
+    const searchAfterBilling = await api.searchOverdraft(account.odAccountNumber);
+    const apiMinPayment = searchAfterBilling.paymentDueInfo[0].minimumPaymentBalance
+    const apiDueDate = dayjs(searchAfterBilling.paymentDueInfo[0].paymentDueDate).format('YYYY-MM-DD');
+
+    expect(apiDueDate).toBe(dates.paymentDueDate);
+    expect(apiMinPayment).toBe(statement.MinimumPaymentBalance);
   });
 
-  afterAll(() => {
+  afterAll(async () => {
     console.log('\n══════════════════════════════════════════');
     console.log('  CREDIT-TC-944 — Summary');
     console.log('══════════════════════════════════════════');
@@ -85,8 +85,10 @@ describe('CREDIT-TC-944 — Minimum Payment Calculation for Partial Repayment', 
     console.log(`  Original principal:  ${account?.searchResponse?.overdrawnAmount}`);
     console.log(`  Partial repayment:   ${PARTIAL_REPAYMENT}`);
     console.log(`  Remaining principal: ${searchAfterRepayment?.overdrawnAmount}`);
-    console.log(`  Expected totalMin:   ${expectedAfterRepayment?.totalMinimumPayment}`);
+    console.log(`  Expected totalMin:   ${totalMinimumPayment}`);
     console.log(`  DB TotalMinimum:     ${statement?.TotalMinimumPayment}`);
     console.log('══════════════════════════════════════════\n');
+    await db.deleteDebtHistoryByDate(cycleRunDate);
+    await db.deleteStatementByDate(cycleRunDate); 
   });
 });

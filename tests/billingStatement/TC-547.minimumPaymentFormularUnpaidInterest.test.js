@@ -70,8 +70,8 @@ describe('CREDIT-TC-547-billing — Minimum Payment After Interest Repayment Wit
     const dailyInterest       = calcDailyInterest(overdrawnAmount, interestRate);
     const interestCharged     = dailyInterest * 2;
     const unpaidInterest      = dailyInterest * 1;
-    const principalMinPayment = calcMinimumPayment({ principal: overdrawnAmount, minPaymentPct: minimumPaymentPercentage });
-    const totalMinimumPayment = parseFloat((principalMinPayment + unpaidInterest).toFixed(2));
+    const principalMinPayment = calcMinimumPayment({ principal: overdrawnAmount, minPaymentRate: minimumPaymentPercentage });
+    const totalMinimumPayment = (principalMinPayment + unpaidInterest);
 
     expected = { principalMinPayment, interestCharged, unpaidInterest, totalMinimumPayment };
 
@@ -79,7 +79,6 @@ describe('CREDIT-TC-547-billing — Minimum Payment After Interest Repayment Wit
       db.getOverdraftStatement(account.odAccountNumber, dates.statementStampDate),
       api.searchOverdraft(account.odAccountNumber),
     ]);
-    console.log("Statement", statement)
   }, 600_000);
 
   test('OverdraftStatements record created for statement stamp date', () => {

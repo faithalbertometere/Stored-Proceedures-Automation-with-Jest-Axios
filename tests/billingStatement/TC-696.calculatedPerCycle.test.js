@@ -7,10 +7,12 @@
 
 const dayjs = require('dayjs');
 const db    = require('../../helpers/dbHelper');
-const { PROCS, runEODUntil, continueEODUntil, getNextStatementRunDate } = require('../../helpers/eodRunner');
+const { PROCS, runEODUntil, getNextStatementRunDate } = require('../../helpers/eodRunner');
 const { setupOverdraftAccount } = require('../../fixtures/overdraftSetup');
+const { getBillingDates, calcMinimumPayment } = require('./_billingSetup');
 
-let account, cycle1StampDate, cycle2StampDate, statementCycle1, statementCycle2;
+
+let account, cycle1StampDate, cycle2StampDate, statementCycle1, cycle1RunDate, principalMinPayment, dates, statementCycle2;
 
 beforeAll(async () => { await db.connect(); }, 15_000);
 afterAll(async ()  => { await db.disconnect(); });
@@ -19,31 +21,22 @@ describe('CREDIT-TC-696 — Minimum Payment Calculated for Each Billing Cycle', 
 
   beforeAll(async () => {
     account = await setupOverdraftAccount();
+    dates   = getBillingDates(account);
 
-    const { statementDay, optInDate } = account.searchResponse;
+    const { statementDay, overdrawnAmount, minimumPaymentPercentage } = account.searchResponse;
 
-    const cycle1RunDate = getNextStatementRunDate(account.drawdownDate, statementDay);
-    cycle1StampDate     = dayjs(cycle1RunDate).add(1, 'day').format('YYYY-MM-DD');
+    cycle1RunDate = dates.statementRunDate;
+    cycle1StampDate     = dates.statementStampDate;
 
     const cycle2RunDate = getNextStatementRunDate(cycle1StampDate, statementDay);
     cycle2StampDate     = dayjs(cycle2RunDate).add(1, 'day').format('YYYY-MM-DD');
 
     // DebtHistory every day through both cycles
-    await runEODUntil({ fromDate: account.drawdownDate, toDate: cycle2RunDate, procs: [PROCS.DEBT_HISTORY] });
+    await runEODUntil({ fromDate: dates.cycleStartDate, toDate: dates.cycleStartDate, procs: [PROCS.DEBT_HISTORY] });
+    await runEODUntil({ fromDate: cycle1RunDate, toDate: cycle1RunDate, procs: [PROCS.DEBT_HISTORY, PROCS.BILLING_STATEMENT] });
+    await runEODUntil({ fromDate: cycle2RunDate, toDate: cycle2RunDate, procs: [PROCS.DEBT_HISTORY, PROCS.BILLING_STATEMENT] });
 
-    // BillingStatement — cycle 1
-    await continueEODUntil({
-      lastDate: dayjs(cycle1RunDate).subtract(1, 'day').format('YYYY-MM-DD'),
-      toDate:   cycle1RunDate,
-      procs:    [PROCS.BILLING_STATEMENT],
-    });
-
-    // BillingStatement — cycle 2
-    await continueEODUntil({
-      lastDate: dayjs(cycle2RunDate).subtract(1, 'day').format('YYYY-MM-DD'),
-      toDate:   cycle2RunDate,
-      procs:    [PROCS.BILLING_STATEMENT],
-    });
+    principalMinPayment = calcMinimumPayment({ principal: overdrawnAmount, minPaymentRate: minimumPaymentPercentage });
 
     [statementCycle1, statementCycle2] = await Promise.all([
       db.getOverdraftStatement(account.odAccountNumber, cycle1StampDate),
@@ -77,7 +70,12 @@ describe('CREDIT-TC-696 — Minimum Payment Calculated for Each Billing Cycle', 
     expect(statementCycle2.TotalMinimumPayment).toBeGreaterThan(0);
   });
 
-  afterAll(() => {
+  test('Both cycles have Correct TotalMinimumPayment', () => {
+    expect(statementCycle1.TotalMinimumPayment).toBe(principalMinPayment);
+    expect(statementCycle2.TotalMinimumPayment).toBe(principalMinPayment);
+  });
+
+  afterAll(async() => {
     console.log('\n══════════════════════════════════════════');
     console.log('  CREDIT-TC-696 — Summary');
     console.log('══════════════════════════════════════════');
@@ -85,5 +83,7 @@ describe('CREDIT-TC-696 — Minimum Payment Calculated for Each Billing Cycle', 
     console.log(`  Cycle 1 stamp: ${cycle1StampDate} | TotalMin: ${statementCycle1?.TotalMinimumPayment}`);
     console.log(`  Cycle 2 stamp: ${cycle2StampDate} | TotalMin: ${statementCycle2?.TotalMinimumPayment}`);
     console.log('══════════════════════════════════════════\n');
+    await db.deleteDebtHistoryByDate(dates.cycleStartDate);
+    await db.deleteStatementByDate(cycle1RunDate);
   });
 });

@@ -87,8 +87,8 @@ async function createCustomerAccount({ customerId, phone, email, lastname, other
 /**
  * Step 1c: Create a Smart OD account and return the OD account number
  */
-async function createSmartODAccount({ linkedAccountNumber }) {
-  const payload  = generateSmartODPayload({ linkedAccountNumber });
+async function createSmartODAccount({ linkedAccountNumber, minimumPaymentPercentage }) {
+  const payload  = generateSmartODPayload({ linkedAccountNumber, minimumPaymentPercentage });
   const response = await api.createSmartOD(payload);
 
   const odAccountNumber = response.successfulModels[0].accountNumber
@@ -154,30 +154,23 @@ async function searchOverdraft({ odAccountNumber }) {
  * @param {boolean} [options.withSearch]   Set false to skip SearchOverdraft call (default: true)
  * @returns {Promise<object>}              Account state object
  */
-async function setupOverdraftAccount({ drawAmount, withSearch = true } = {}) {
+async function setupOverdraftAccount({ drawAmount, minimumPaymentPercentage, withSearch = true } = {}) {
   const amount = drawAmount ?? config.smartOD.drawAmount;
 
-  console.log('  [setup] Creating customer...');
   const customer = await createCustomer();
 
-  console.log(`  [setup] CustomerId: ${customer.customerId} — Creating account...`);
   const { linkedAccountNumber } = await createCustomerAccount(customer);
 
-  console.log(`  [setup] LinkedAccount: ${linkedAccountNumber} — Creating Smart OD...`);
-  const { odAccountNumber } = await createSmartODAccount({ linkedAccountNumber });
+  const { odAccountNumber } = await createSmartODAccount({ linkedAccountNumber, minimumPaymentPercentage });
 
-  console.log(`  [setup] OD Account: ${odAccountNumber} — Opting in...`);
   await optIn({ odAccountNumber });
 
-  console.log('  [setup] Consenting...');
   await consent({ odAccountNumber });
 
-  console.log(`  [setup] Drawing down ${amount}...`);
   const { drawdownDate, drawdownAmount } = await drawdown({ linkedAccountNumber, amount });
 
   let searchResponse = null;
   if (withSearch) {
-    console.log('  [setup] Verifying via SearchOverdraft...');
     searchResponse = await searchOverdraft({ odAccountNumber });
   }
 
@@ -193,26 +186,14 @@ async function setupOverdraftAccount({ drawAmount, withSearch = true } = {}) {
   };
 }
 
-/**
- * Provisions an OD account that has opted in but NOT drawn down.
- * Used for TC-687: verify interest is NOT accrued on an account with no debt.
- *
- * @returns {Promise<object>} { customerId, linkedAccountNumber, odAccountNumber, searchResponse }
- */
 async function setupAccountNoDrawdown() {
-  console.log('  [setup] Creating customer (no drawdown)...');
   const customer = await createCustomer();
 
-  console.log(`  [setup] CustomerId: ${customer.customerId} — Creating account...`);
   const { linkedAccountNumber } = await createCustomerAccount(customer);
 
-  console.log(`  [setup] LinkedAccount: ${linkedAccountNumber} — Creating Smart OD...`);
   const { odAccountNumber } = await createSmartODAccount({ linkedAccountNumber });
 
-  console.log(`  [setup] OD Account: ${odAccountNumber} — Opting in (no drawdown)...`);
   await optIn({ odAccountNumber });
-
-  console.log('  [setup] ✔ Account ready (opted-in, no drawdown)\n');
 
   const searchResponse = await searchOverdraft({ odAccountNumber });
 

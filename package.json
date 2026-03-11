@@ -33,6 +33,8 @@
     "test:billing:943": "jest tests/billingStatement/TC-943 --runInBand --verbose",
     "test:billing:944": "jest tests/billingStatement/TC-944 --runInBand --verbose",
     "test:billing:945": "jest tests/billingStatement/TC-945 --runInBand --verbose",
+    "test:billing:946": "jest tests/billingStatement/TC-946 --runInBand --verbose",
+    "test:billing:947": "jest tests/billingStatement/TC-947 --runInBand --verbose",
     "test:manage": "jest tests/manageOverdraft/ --runInBand --verbose",
     "test:manage:552": "jest tests/manageOverdraft/TC-552 --runInBand --verbose",
     "test:manage:553": "jest tests/manageOverdraft/TC-553-554 --runInBand --verbose",

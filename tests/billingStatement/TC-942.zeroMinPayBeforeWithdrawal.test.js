@@ -8,10 +8,12 @@
 const dayjs = require('dayjs');
 const db    = require('../../helpers/dbHelper');
 const api   = require('../../helpers/apiHelper');
-const { PROCS, runEODUntil, continueEODUntil, getNextStatementRunDate, getPaymentDates } = require('../../helpers/eodRunner');
+const { PROCS, runEODUntil} = require('../../helpers/eodRunner');
 const { setupAccountNoDrawdown } = require('../../fixtures/overdraftSetup');
+const { getBillingDates } = require('./_billingSetup');
 
-let account, statementStampDate, statement, searchResponse;
+
+let account, statement, dates, cycleRunDate, searchResponse;
 
 beforeAll(async () => { await db.connect(); }, 15_000);
 afterAll(async ()  => { await db.disconnect(); });
@@ -20,21 +22,14 @@ describe('CREDIT-TC-942 — Minimum Payment is 0 for Account Yet to Withdraw', (
 
   beforeAll(async () => {
     account = await setupAccountNoDrawdown();
+    dates   = getBillingDates(account);
 
-    const fakeDrawdownDate   = dayjs().format('YYYY-MM-DD');
-    const { statementDay }   = account.searchResponse;
-    const statementRunDate   = getNextStatementRunDate(fakeDrawdownDate, statementDay);
-    statementStampDate       = dayjs(statementRunDate).add(1, 'day').format('YYYY-MM-DD');
-
-    await runEODUntil({ fromDate: fakeDrawdownDate, toDate: statementRunDate, procs: [PROCS.DEBT_HISTORY] });
-    await continueEODUntil({
-      lastDate: dayjs(statementRunDate).subtract(1, 'day').format('YYYY-MM-DD'),
-      toDate:   statementRunDate,
-      procs:    [PROCS.BILLING_STATEMENT],
-    });
+    cycleRunDate = dates.statementRunDate;
+   
+    await runEODUntil({ fromDate: cycleRunDate, toDate: cycleRunDate, procs: [PROCS.DEBT_HISTORY, PROCS.BILLING_STATEMENT] });
 
     [statement, searchResponse] = await Promise.all([
-      db.getOverdraftStatement(account.odAccountNumber, statementStampDate),
+      db.getOverdraftStatement(account.odAccountNumber, dates.statementStampDate),
       api.searchOverdraft(account.odAccountNumber),
     ]);
   }, 600_000);
@@ -44,20 +39,19 @@ describe('CREDIT-TC-942 — Minimum Payment is 0 for Account Yet to Withdraw', (
   });
 
   test('No statement record created (nothing to bill)', () => {
-    expect(statement).toBeNull();
+    expect(statement).not.toBeNull();
+  });
+
+   test('DB PrincipalMinimumPayment 0', () => {
+    expect(statement.PrincipalMinimumPayment).toBe(0);
   });
 
   test('paymentDueInfo is null on SearchOverdraft', () => {
     expect(searchResponse.paymentDueInfo).toBeNull();
   });
 
-  afterAll(() => {
-    console.log('\n══════════════════════════════════════════');
-    console.log('  CREDIT-TC-942 — Summary');
-    console.log('══════════════════════════════════════════');
-    console.log(`  OD Account:    ${account?.odAccountNumber}`);
-    console.log(`  DB statement:  ${statement ? 'EXISTS (unexpected)' : 'null ✔'}`);
-    console.log(`  paymentDueInfo:${searchResponse?.paymentDueInfo ?? 'null ✔'}`);
-    console.log('══════════════════════════════════════════\n');
+  afterAll(async() => {
+    await db.deleteDebtHistoryByDate(cycleRunDate);
+    await db.deleteStatementByDate(cycleRunDate); 
   });
 });

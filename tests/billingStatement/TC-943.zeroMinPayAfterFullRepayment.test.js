@@ -5,14 +5,15 @@
  * Run: npx jest tests/billingStatement/TC-943 --runInBand
  */
 
-const dayjs = require('dayjs');
 const db    = require('../../helpers/dbHelper');
 const api   = require('../../helpers/apiHelper');
-const { runBillingEOD } = require('./_billingSetup');
+const { getBillingDates } = require('./_billingSetup');
 const { setupOverdraftAccount } = require('../../fixtures/overdraftSetup');
 const { generateInstrumentNumber } = require('../../data/testData');
+const { PROCS, runEODUntil} = require('../../helpers/eodRunner');
 
-let account, dates, statement, searchAfterRepayment;
+
+let account, dates, statement, cycleRunDate, searchAfterRepayment;
 
 beforeAll(async () => { await db.connect(); }, 15_000);
 afterAll(async ()  => { await db.disconnect(); });
@@ -21,10 +22,10 @@ describe('CREDIT-TC-943 — Minimum Payment is 0 After Full Repayment', () => {
 
   beforeAll(async () => {
     account = await setupOverdraftAccount();
+    dates   = getBillingDates(account);
 
     // Full repayment before billing EOD runs
     const totalOwed = account.searchResponse.overdrawnAmount + account.searchResponse.accruedODInterest;
-    console.log(`  [TC-943] Full repayment: ${totalOwed}`);
     await api.makeRepayment( account.linkedAccountNumber, totalOwed, generateInstrumentNumber());
 
     // Wait for background worker to apply repayment
@@ -33,8 +34,9 @@ describe('CREDIT-TC-943 — Minimum Payment is 0 After Full Repayment', () => {
       expectedBalance: 0,
     });
 
-    // Now run billing EOD — should produce no minimum payment
-    dates = await runBillingEOD({ ...account, searchResponse: searchAfterRepayment });
+    cycleRunDate = dates.statementRunDate;
+   
+    await runEODUntil({ fromDate: cycleRunDate, toDate: cycleRunDate, procs: [PROCS.DEBT_HISTORY, PROCS.BILLING_STATEMENT] });
 
     statement = await db.getOverdraftStatement(account.odAccountNumber, dates.statementStampDate);
   }, 600_000);
@@ -48,22 +50,16 @@ describe('CREDIT-TC-943 — Minimum Payment is 0 After Full Repayment', () => {
   });
 
   test('No statement record or MinimumPaymentBalance = 0', () => {
-    const balance = statement?.MinimumPaymentBalance ?? 0;
-    expect(balance).toBe(0);
+    expect(statement).not.toBeNull();
+    expect(statement.MinimumPaymentBalance).toBe(0);
   });
 
   test('paymentDueInfo is null or empty on SearchOverdraft', () => {
-    const search = searchAfterRepayment;
-    expect(search.paymentDueInfo === null || search.paymentDueInfo?.length === 0).toBe(true);
+    expect(searchAfterRepayment.paymentDueInfo).toBe(null);
   });
 
-  afterAll(() => {
-    console.log('\n══════════════════════════════════════════');
-    console.log('  CREDIT-TC-943 — Summary');
-    console.log('══════════════════════════════════════════');
-    console.log(`  OD Account:     ${account?.odAccountNumber}`);
-    console.log(`  Post-repay bal: ${searchAfterRepayment?.overdrawnAmount}`);
-    console.log(`  DB MinPayBal:   ${statement?.MinimumPaymentBalance ?? 'no record'}`);
-    console.log('══════════════════════════════════════════\n');
+  afterAll(async() => {
+    await db.deleteDebtHistoryByDate(cycleRunDate);
+    await db.deleteStatementByDate(cycleRunDate); 
   });
 });
