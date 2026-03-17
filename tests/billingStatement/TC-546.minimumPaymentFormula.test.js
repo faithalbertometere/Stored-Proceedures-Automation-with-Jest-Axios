@@ -40,8 +40,6 @@ describe('CREDIT-TC-546/697 — Right Minimum Payment Based on Formula', () => {
 
     expected = { principalMinPayment, interestCharged, totalMinimumPayment };
 
-    console.log(`  [TC-546] Expected: principalMin=${expected.principalMinPayment} | interestCharged=${expected.interestCharged} | total=${expected.totalMinimumPayment}`);
-
     [statement, searchResponse] = await Promise.all([
       db.getOverdraftStatement(account.odAccountNumber, dates.statementStampDate),
       api.searchOverdraft(account.odAccountNumber),
