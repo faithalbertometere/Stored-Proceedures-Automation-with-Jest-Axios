@@ -225,29 +225,9 @@ describe('CREDIT-TC-694 — New Drawdown After Repayment: Interest Accrues on Up
   });
 
   afterAll(async () => {
-    console.log('\n══════════════════════════════════════════');
-    console.log('  CREDIT-TC-694 — Summary');
-    console.log('══════════════════════════════════════════');
-    console.log(`  --- Part 1 (Partial Repayment) ---`);
-    console.log(`  OD Account:                 ${accountPartial?.odAccountNumber}`);
-    console.log(`  Original principal:         ${accountPartial?.searchResponse?.overdrawnAmount}`);
-    console.log(`  Day 2 interest:             ${recordDay2Partial?.UnpaidOverdraftInterest}`);
-    console.log(`  Partial repaid:             ${partialRepayAmount}`);
-    console.log(`  Principal after partial:    ${searchAfterPartial?.overdrawnAmount}`);
-    console.log(`  New drawdown:               ${newDrawdownAmount}`);
-    console.log(`  Day 4 principal:            ${recordDay4Partial?.UnpaidOverdraftPrincipal}`);
-    console.log(`  Day 4 interest:             ${recordDay4Partial?.UnpaidOverdraftInterest}`);
-    console.log(`  --- Part 2 (Full Repayment) ---`);
-    console.log(`  OD Account:                 ${accountFull?.odAccountNumber}`);
-    console.log(`  Original principal:         ${accountFull?.searchResponse?.overdrawnAmount}`);
-    console.log(`  Day 2 interest:             ${recordDay2Full?.UnpaidOverdraftInterest}`);
-    console.log(`  Post-full repay balance:    ${searchAfterFull?.overdrawnAmount}`);
-    console.log(`  New drawdown:               ${expectedPrincipalPart2}`);
-    console.log(`  Day 6 principal:            ${recordDay6Full?.UnpaidOverdraftPrincipal}`);
-    console.log(`  Day 6 interest:             ${recordDay6Full?.UnpaidOverdraftInterest}`);
-    console.log('══════════════════════════════════════════\n');
-    await Promise.all([
-      db.deleteDebtHistoryByDate(day1Date),
-    ]);
+    await (
+      db.deleteDebtHistoryByDate(day1Date)
+    )
   });
+
 });
