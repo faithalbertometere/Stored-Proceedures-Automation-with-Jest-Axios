@@ -110,7 +110,7 @@ describe('CREDIT-TC-945 — Minimum Payment Next Month with Carryover', () => {
     console.log(`  Cycle 2 TotalMinimum:        ${statementCycle2?.TotalMinimumPayment}`);
     console.log(`  Cycle 2 MinPayBalance:       ${statementCycle2?.MinimumPaymentBalance}`);
     console.log('══════════════════════════════════════════════════\n');
-    // await db.deleteDebtHistoryByDate(dates.cycleStartDate);
-    // await db.deleteStatementByDate(dates.cycleEndDate);
+    await db.deleteDebtHistoryByDate(dates.cycleStartDate);
+    await db.deleteStatementByDate(dates.cycleEndDate);
   });
 });

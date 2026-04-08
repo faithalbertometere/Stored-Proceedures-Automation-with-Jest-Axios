@@ -126,7 +126,7 @@ describe('CREDIT-TC-947 — Principal Cap with Interest: TotalMinimumPayment = P
     console.log(`  Cycle 2 TotalMinimumPayment:   ${statementCycle2?.TotalMinimumPayment}`);
     console.log(`  Cycle 2 OutstandingPrincipal:  ${statementCycle2?.OutstandingPrincipal}`);
     console.log('══════════════════════════════════════════════════\n');
-    await db.deleteDebtHistoryByDate(dates.cycleStartDate);
-    await db.deleteStatementByDate(dates.cycleEndDate);
+    // await db.deleteDebtHistoryByDate(dates.cycleStartDate);
+    // await db.deleteStatementByDate(dates.cycleEndDate);
   });
 });

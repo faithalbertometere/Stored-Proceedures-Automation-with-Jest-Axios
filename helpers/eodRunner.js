@@ -44,13 +44,14 @@ const config = require('../config');
 // Proc name constants
 // ─────────────────────────────────────────────
 const PROCS = {
+  RECONCILIATION:    config.procs.RECONCILIATION,
   DEBT_HISTORY:      config.procs.DEBT_HISTORY,
   INTEREST_ACCRUAL:  config.procs.INTEREST_ACCRUAL,
   BILLING_STATEMENT: config.procs.BILLING_STATEMENT,
   MANAGE_OVERDRAFT:  config.procs.MANAGE_OVERDRAFT,
   // Shorthand to run all 3 in the correct order
   get ALL() {
-    return [this.DEBT_HISTORY, this.BILLING_STATEMENT, this.MANAGE_OVERDRAFT];
+    return [this.RECONCILIATION, this.DEBT_HISTORY, this.BILLING_STATEMENT, this.MANAGE_OVERDRAFT];
   },
 };
 
@@ -61,6 +62,7 @@ const PROC_KEY = {
   [PROCS.BILLING_STATEMENT]: 'billingStatement',
   [PROCS.MANAGE_OVERDRAFT]:  'manageOverdraft',
   [PROCS.INTEREST_ACCRUAL]:  'interestAccrual',
+  [PROCS.RECONCILIATION]:    'reconciliation',
 };
 
 // ─────────────────────────────────────────────
@@ -165,8 +167,8 @@ function getNextStatementRunDate(fromDate, statementDay, monthsAhead = 1) {
  */
 function getPaymentDates(statementDate, gracePeriodInDays) {
   const paymentDueDate = dayjs(statementDate).add(gracePeriodInDays, 'day').format('YYYY-MM-DD');
-  const dpd1Date       = dayjs(paymentDueDate).add(1, 'day').format('YYYY-MM-DD');
-  return { paymentDueDate, dpd1Date };
+  const lastSafeDate   = dayjs(paymentDueDate).subtract(1, 'day').format('YYYY-MM-DD');
+  return { paymentDueDate, lastSafeDate };
 }
 
 /**

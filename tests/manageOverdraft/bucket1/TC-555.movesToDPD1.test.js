@@ -16,33 +16,53 @@ afterAll(async ()  => { await db.disconnect(); });
 describe('CREDIT-TC-555 — Moves to DPD=1 When Minimum Payment Not Made', () => {
 
   describe('Boundary: paymentDueDate — DPD=0 (last safe day)', () => {
-    test('DB: DaysPastDue = 0 on paymentDueDate', () => {
-      expect(ctx.stateAtDue.dbRecord.DaysPastDue).toBe(0);
+
+    test('DB: DaysPastDue = 0 before paymentDueDate', () => {
+      expect(ctx.stateLastSafeDate.dbRecord.DaysPastDue).toBe(0);
     });
-    test('DB: ArrearsBucket = 0 on paymentDueDate', () => {
-      expect(ctx.stateAtDue.dbRecord.ArrearsBucket).toBe(0);
+    test('DB: ArrearsBucket = 0 before paymentDueDate', () => {
+      expect(ctx.stateLastSafeDate.dbRecord.ArrearsBucket).toBe(0);
     });
-    test('API: arrearsBucket = 0 on paymentDueDate', () => {
-      expect(ctx.stateAtDue.searchResponse.arrearsBucket).toBe(0);
+    test('API: arrearsBucket = 0 before paymentDueDate', () => {
+      expect(ctx.stateLastSafeDate.searchResponse.arrearsBucket).toBe(0);
+      expect(ctx.stateLastSafeDate.searchResponse.status).toBe(2);
     });
   });
 
   describe('Boundary: dpd1Date — DPD=1 (entry into Bucket 1)', () => {
-    test('DB: DaysPastDue = 1 on dpd1Date', () => {
-      expect(ctx.stateAtDPD1.dbRecord.DaysPastDue).toBe(1);
-    });
-    test('DB: ArrearsBucket = 1 on dpd1Date', () => {
-      expect(ctx.stateAtDPD1.dbRecord.ArrearsBucket).toBe(1);
-    });
-    test('API: arrearsBucket = 1 on dpd1Date', () => {
-      expect(ctx.stateAtDPD1.searchResponse.arrearsBucket).toBe(1);
-    });
-    test('DB: FinancialDate = dpd1Date', () => {
-      expect(dayjs(ctx.stateAtDPD1.dbRecord.FinancialDate).format('YYYY-MM-DD')).toBe(ctx.dates.dpd1Date);
-    });
+      test('DB: DaysPastDue = 1 after DebtHistory runs (before ManageOverdraft)', () => {
+          expect(ctx.stateAtDPD1BeforeManage.dbRecord.DaysPastDue).toBe(1);
+          expect(ctx.stateAtDPD1BeforeManage.dbRecord.ArrearsBucket).toBe(1);
+       });
+    
+      test('DB: DaysPastDue = 1 on dpd1Date', () => {
+          expect(ctx.stateAtDPD1.dbRecord.DaysPastDue).toBe(1);
+       });
+      test('DB: ArrearsBucket = 1 on dpd1Date', () => {
+          expect(ctx.stateAtDPD1.dbRecord.ArrearsBucket).toBe(1);
+       });
+
+      test('DB: MinimumPayment = TotalMinimumPayment from billing statement', () => {
+          expect(parseFloat(ctx.stateAtDPD1.dbRecord.MinimumPayment))
+          .toBe(ctx.statement.TotalMinimumPayment);
+        });
+
+      test('DB: AmountOverDue = MinimumPayment (first overdue cycle)', () => {
+          expect(parseFloat(ctx.stateAtDPD1.dbRecord.AmountOverDue))
+         .toBe(ctx.stateAtDPD1.dbRecord.MinimumPayment);
+      });
+
+      test('API: arrearsBucket = 1 on dpd1Date', () => {
+          expect(parseFloat(ctx.stateAtDPD1.searchResponse.arrearsBucket)).toBe(1);
+          expect(ctx.stateAtDPD1.searchResponse.status).toBe(7);
+      });
+      
+      test('DB: FinancialDate = dpd1Date', () => {
+          expect(dayjs(ctx.stateAtDPD1.dbRecord.FinancialDate).format('YYYY-MM-DD')).toBe(ctx.dates.dpd1Date);
+      });
   });
 
-  afterAll(() => {
+  afterAll(async() => {
     console.log('\n══════════════════════════════════════════');
     console.log('  CREDIT-TC-555 — Boundary Summary');
     console.log('══════════════════════════════════════════');
@@ -50,5 +70,8 @@ describe('CREDIT-TC-555 — Moves to DPD=1 When Minimum Payment Not Made', () =>
     console.log(`  paymentDueDate (DPD=0):    Bucket=${ctx?.stateAtDue?.dbRecord?.ArrearsBucket}`);
     console.log(`  dpd1Date       (DPD=1):    Bucket=${ctx?.stateAtDPD1?.dbRecord?.ArrearsBucket}`);
     console.log('══════════════════════════════════════════\n');
+    console.log(ctx.account.drawdownDate)
+    await db.deleteDebtHistoryByDate(ctx.account.drawdownDate);
+    await db.deleteStatementByDate(ctx.account.drawdownDate);
   });
 });

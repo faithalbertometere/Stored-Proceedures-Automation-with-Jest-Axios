@@ -8,10 +8,10 @@
 const dayjs = require('dayjs');
 const db    = require('../../../helpers/dbHelper');
 const api   = require('../../../helpers/apiHelper');
-const { PROCS, continueEODUntil } = require('../../../helpers/eodRunner');
+const { PROCS, runEODUntil } = require('../../../helpers/eodRunner');
 const { setupOverdraftAccount }    = require('../../../fixtures/overdraftSetup');
 const { generateInstrumentNumber } = require('../../../data/testData');
-const { runToPaymentDueDate, runOnDate, getMilestoneDates, fetchBucketState, assertStatus, assertAccountDisabled, assertAccountReenabled, STATUS } = require('../_manageSetup');
+const { runToPaymentDueDate, getMilestoneDates, fetchBucketState, assertStatus, assertAccountReenabled, STATUS } = require('../_manageSetup');
 
 let account, dates, stateDisabled, stateReenabled;
 
@@ -19,11 +19,16 @@ beforeAll(async () => {
   await db.connect();
   account = await setupOverdraftAccount();
   dates   = getMilestoneDates(account);
+
   await runToPaymentDueDate(account);
-  await runOnDate(dates.paymentDueDate, dates.dpd1Date, account, dates);
+
+  await runEODUntil({
+    fromDate: dates.dpd1Date,
+    toDate:   dates.dpd1Date,
+    procs:    [PROCS.DEBT_HISTORY, PROCS.MANAGE_OVERDRAFT],
+  });
   stateDisabled = await fetchBucketState(account.odAccountNumber, dates.dpd1Date);
 
-  // Make full minimum payment
   const statement  = await db.getOverdraftStatement(account.odAccountNumber, dates.statementStampDate);
   const minPayment = statement?.MinimumPaymentBalance ?? account.searchResponse.paymentDueInfo?.[0]?.minimumPaymentBalance;
   await api.makeRepayment(account.linkedAccountNumber, minPayment, generateInstrumentNumber());
@@ -32,11 +37,13 @@ beforeAll(async () => {
   await api.waitForRepaymentProcessed({ accountNumber: account.odAccountNumber, expectedBalance });
 
   const nextDay = dayjs(dates.dpd1Date).add(1, 'day').format('YYYY-MM-DD');
-  await continueEODUntil({ lastDate: dates.dpd1Date, toDate: nextDay, procs: [PROCS.DEBT_HISTORY, PROCS.MANAGE_OVERDRAFT] });
+  await runEODUntil({
+    fromDate: nextDay,
+    toDate:   nextDay,
+    procs:    [PROCS.RECONCILIATION, PROCS.DEBT_HISTORY, PROCS.MANAGE_OVERDRAFT],
+  });
   stateReenabled = await fetchBucketState(account.odAccountNumber, nextDay);
 }, 900_000);
-
-afterAll(async () => { await db.disconnect(); });
 
 describe('CREDIT-TC-718 — Account Re-enabled After Repayment (DPD < 90)', () => {
 
@@ -51,7 +58,7 @@ describe('CREDIT-TC-718 — Account Re-enabled After Repayment (DPD < 90)', () =
     expect(stateReenabled.dbRecord.ArrearsBucket).toBe(0);
   });
 
-  afterAll(() => {
+  afterAll(async () => {
     console.log('\n══════════════════════════════════════════');
     console.log('  CREDIT-TC-718 — Summary');
     console.log('══════════════════════════════════════════');
@@ -60,5 +67,8 @@ describe('CREDIT-TC-718 — Account Re-enabled After Repayment (DPD < 90)', () =
     console.log(`  Status after pay: ${stateReenabled?.searchResponse?.status}`);
     console.log(`  Bucket after pay: ${stateReenabled?.dbRecord?.ArrearsBucket}`);
     console.log('══════════════════════════════════════════\n');
+    await db.deleteDebtHistoryByDate(account.drawdownDate);
+    await db.deleteStatementByDate(account.drawdownDate);
+    await db.disconnect();
   });
 });

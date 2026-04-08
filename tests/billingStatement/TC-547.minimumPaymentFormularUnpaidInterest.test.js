@@ -64,7 +64,7 @@ describe('CREDIT-TC-547-billing — Minimum Payment After Interest Repayment Wit
     await runEODUntil({
       fromDate: dates.statementRunDate,
       toDate:   dates.statementRunDate,
-      procs:    [PROCS.DEBT_HISTORY, PROCS.INTEREST_ACCRUAL, PROCS.BILLING_STATEMENT, PROCS.MANAGE_OVERDRAFT],
+      procs:    [PROCS.RECONCILIATION,PROCS.DEBT_HISTORY, PROCS.INTEREST_ACCRUAL, PROCS.BILLING_STATEMENT, PROCS.MANAGE_OVERDRAFT],
     });
 
     const dailyInterest       = calcDailyInterest(overdrawnAmount, interestRate);

@@ -92,7 +92,7 @@ function generateAccountPayload({ customerId, phone, email, lastname, otherNames
   };
 }
 
-function generateSmartODPayload({ linkedAccountNumber, minimumPaymentPercentage }) {
+function generateSmartODPayload({ linkedAccountNumber, minimumPaymentPercentage, incomeRecognitionStop, defaultArrearsBucket }) {
   return {
     auditLogData: config.audit,
     accountSmartOverdrafts: [
@@ -102,6 +102,8 @@ function generateSmartODPayload({ linkedAccountNumber, minimumPaymentPercentage 
         productId:           config.smartOD.productId,
         sponsorId:           config.smartOD.sponsorId,
         ...(minimumPaymentPercentage !== undefined && { minimumPaymentPercentage }),
+        ...(incomeRecognitionStop !== undefined && { incomeRecognitionStop }),
+        ...(defaultArrearsBucket !== undefined && { defaultArrearsBucket }),
       },
     ],
     approvedBy: config.smartOD.approvedBy,

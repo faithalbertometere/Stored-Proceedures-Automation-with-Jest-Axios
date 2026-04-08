@@ -13,8 +13,8 @@ const { setupOverdraftAccount } = require('../../fixtures/overdraftSetup');
 const { generateInstrumentNumber } = require('../../data/testData');
 
 const PARTIAL_REPAYMENT = 1000000;
-let account, day1Date, day3Date;
-let breakdownDay1, breakdownDay3, searchAfterRepayment;
+let account, day1Date, expectedBalance;
+let breakdown1, breakdown2, searchAfterRepayment, debthistory;
 
 beforeAll(async () => { await db.connect(); }, 15_000);
 afterAll(async ()  => { await db.disconnect(); });
@@ -24,14 +24,12 @@ describe('CREDIT-TC-814 — Repayment Updates OverdraftDebtBreakdown', () => {
   beforeAll(async () => {
     account  = await setupOverdraftAccount({ drawAmount: 3000000 });
     day1Date = account.drawdownDate;
-    day3Date = dayjs(day1Date).add(2, 'day').format('YYYY-MM-DD');
+    // day3Date = dayjs(day1Date).add(2, 'day').format('YYYY-MM-DD');
 
-    // Day 1 — EOD, breakdown records created
-    await runEODUntil({ fromDate: day1Date, toDate: day1Date, procs: [PROCS.DEBT_HISTORY] });
-    breakdownDay1 = await db.getDebtBreakdownRecords(account.odAccountNumber, day1Date);
+    // // Day 1 — EOD, breakdown records created
+    breakdown1 = await db.getDebtBreakdownRecords(account.odAccountNumber, day1Date);
 
     // Partial repayment
-    console.log(`  [TC-814] Partial repayment: ${PARTIAL_REPAYMENT}`);
     await api.makeRepayment(account.linkedAccountNumber, PARTIAL_REPAYMENT, generateInstrumentNumber());
 
     // Wait for background worker to process the repayment
@@ -42,44 +40,52 @@ describe('CREDIT-TC-814 — Repayment Updates OverdraftDebtBreakdown', () => {
     });
 
     // Day 3 — EOD after repayment, check breakdown reflects reduced principal
-    await runEODUntil({ fromDate: day3Date, toDate: day3Date, procs: [PROCS.DEBT_HISTORY] });
-    breakdownDay3 = await db.getDebtBreakdownRecords(account.odAccountNumber, day3Date);
+    await runEODUntil({ fromDate: day1Date, toDate: day1Date, procs: [PROCS.RECONCILIATION, PROCS.DEBT_HISTORY] });
+    breakdown2 = await db.getDebtBreakdownRecords(account.odAccountNumber, day1Date);
+    debthistory = await db.getDebtHistoryRecord(account.odAccountNumber, day1Date);
   }, 600_000);
 
   test('Day 1: breakdown record exists before repayment', () => {
-    expect(breakdownDay1.length).toBeGreaterThan(0);
+    expect(breakdown1.length).toBeGreaterThan(0);
   });
 
   test('Day 1: principal = full drawdown amount', () => {
-    expect(breakdownDay1[0].UnpaidOverdraftPrincipal).toBe(account.searchResponse.overdrawnAmount);
+    expect(breakdown1[0].UnpaidOverdraftPrincipal).toBe(account.searchResponse.overdrawnAmount);
   });
 
   test('After repayment: overdrawnAmount reduced on SearchOverdraft', () => {
-    const expectedBalance = account.searchResponse.overdrawnAmount - PARTIAL_REPAYMENT;
-    expect(searchAfterRepayment.overdrawnAmount).toBeCloseTo(expectedBalance, 2);
+    expectedBalance = account.searchResponse.overdrawnAmount - PARTIAL_REPAYMENT;
+    expect(searchAfterRepayment.overdrawnAmount).toBe(expectedBalance);
   });
 
   test('Day 3: breakdown record exists after repayment', () => {
-    expect(breakdownDay3.length).toBeGreaterThan(0);
+    expect(breakdown2.length).toBeGreaterThan(0);
   });
 
   test('Day 3: principal is less than Day 1 (repayment reflected)', () => {
-    expect(breakdownDay3[0].UnpaidOverdraftPrincipal).toBeLessThan(breakdownDay1[0].UnpaidOverdraftPrincipal);
+    expect(breakdown2[0].UnpaidOverdraftPrincipal).toBe(expectedBalance);
+    expect(breakdown2[1].RepaymentStatus).toBe(3);
+    expect(breakdown2[0].RepaymentStatus).toBe(1);
   });
 
   test('Day 3: principal matches reduced overdrawnAmount from API', () => {
-    expect(breakdownDay3[0].UnpaidOverdraftPrincipal).toBeCloseTo(searchAfterRepayment.overdrawnAmount, 2);
+    expect(breakdown2[0].UnpaidOverdraftPrincipal).toBe(searchAfterRepayment.overdrawnAmount);
   });
 
-  afterAll(() => {
+   test('OverdraftDebtHistory record reflects correct OutstandingPrincipal', () => {
+    expect(debthistory.UnpaidOverdraftPrincipal).toBe(searchAfterRepayment.overdrawnAmount);
+  });
+
+  afterAll(async () => {
     console.log('\n══════════════════════════════════════════');
     console.log('  CREDIT-TC-814 — Summary');
     console.log('══════════════════════════════════════════');
     console.log(`  OD Account:         ${account?.odAccountNumber}`);
-    console.log(`  Original principal: ${breakdownDay1?.[0]?.UnpaidOverdraftPrincipal}`);
+    console.log(`  Original principal: ${breakdown1?.[0]?.UnpaidOverdraftPrincipal}`);
     console.log(`  Repayment:          ${PARTIAL_REPAYMENT}`);
-    console.log(`  Day 3 principal:    ${breakdownDay3?.[0]?.UnpaidOverdraftPrincipal}`);
+    console.log(`  Day 3 principal:    ${breakdown2?.[0]?.UnpaidOverdraftPrincipal}`);
     console.log(`  API balance after:  ${searchAfterRepayment?.overdrawnAmount}`);
     console.log('══════════════════════════════════════════\n');
+    await db.deleteDebtHistoryByDate(account.drawdownDate);
   });
 });

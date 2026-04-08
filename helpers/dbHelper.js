@@ -34,8 +34,17 @@ async function runEODProc(procName, finDate) {
   req.input('FinDate', sql.DateTime, new Date(finDate));
 
   // EOD_SmartOverdraftInterestAccrual requires an extra RefNumber param
-  if (procName === 'dbo.EOD_SmartOverdraftInterestAccrual') {
+  if (procName === process.env.INTEREST_ACCRUAL) {
     req.input('RefNumber', sql.NVarChar(20), `EOD-${finDate}`);
+  }
+
+  // Reconciliation proc does not use @successInd
+  if (procName === process.env.RECONCILIATION) {
+    const result = await req.execute(procName);
+    return {
+      returnCode: result.returnValue,
+      successInd: true,
+    };
   }
 
   req.output('successInd', sql.Bit);
@@ -64,12 +73,12 @@ async function getDebtHistoryRecord(accountNumber, financialDate) {
         CAST(DaysAtRisk    AS INT) AS DaysAtRisk,
         CAST(DaysPastDue   AS INT) AS DaysPastDue,
         CAST(ArrearsBucket AS INT) AS ArrearsBucket,
-        MinimumPayment,
-        AmountOverDue,
-        PaymentDueDate,
-        NextStatementDate,
-        PreviousStatementDate,
-        BillingCycleLength
+        CAST(MinimumPayment AS DECIMAL(18,2)) AS MinimumPayment,
+        CAST(AmountOverDue AS DECIMAL(18,2)) AS AmountOverDue,
+        CAST(PaymentDueDate  AS DATE)   AS PaymentDueDate,
+        CAST(NextStatementDate AS DATE) AS NextStatementDate,
+        CAST(PreviousStatementDate AS DATE) AS PreviousStatementDate,
+        CAST(BillingCycleLength AS INT) AS BillingCycleLength
       FROM ${config.tables.BalanceHistory}
       WHERE AccountNumber              = @AccountNumber
         AND CAST(FinancialDate AS DATE) = @FinancialDate
@@ -95,7 +104,7 @@ async function getDebtBreakdownRecords(accountNumber, realDate) {
         FROM ${config.tables.OverdraftDebtBreakdowns}
         WHERE AccountNumber          = @AccountNumber
         AND CAST(RealDate AS DATE) = @RealDate
-        ORDER BY RealDate DESC
+        ORDER BY CreationDate DESC
     `);
   return result.recordset;
 }

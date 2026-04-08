@@ -2,7 +2,7 @@ module.exports = {
   rootDir:         '../', 
   testEnvironment: 'node',
   testTimeout:     120000,
-  testMatch:       require('./testPaths/manageOverdraft'),
+  testMatch:       require('./testpaths/manageOverdraft'),
   reporters: [
     'default',
     [
