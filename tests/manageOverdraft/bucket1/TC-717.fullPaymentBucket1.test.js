@@ -8,21 +8,28 @@
 const dayjs = require('dayjs');
 const db    = require('../../../helpers/dbHelper');
 const api   = require('../../../helpers/apiHelper');
-const { PROCS, continueEODUntil } = require('../../../helpers/eodRunner');
+const { PROCS, runEODUntil } = require('../../../helpers/eodRunner');
 const { setupOverdraftAccount }    = require('../../../fixtures/overdraftSetup');
 const { generateInstrumentNumber } = require('../../../data/testData');
-const { runToPaymentDueDate, runOnDate, getMilestoneDates, fetchBucketState, assertBucketState, assertStatus, assertAccountReenabled, STATUS } = require('../_manageSetup');
+const { runToPaymentDueDate, getMilestoneDates, fetchBucketState, assertBucketState, assertStatus, assertAccountReenabled, STATUS } = require('../_manageSetup');
 
-let account, dates, stateAfterPayment;
+let account, dates, stateAfterPayment, minPayment;
 
 beforeAll(async () => {
   await db.connect();
   account = await setupOverdraftAccount();
-  dates   = await runToPaymentDueDate(account);
-  await runOnDate(dates.paymentDueDate, dates.dpd1Date, account, dates);
+  dates   = getMilestoneDates(account);
 
-  const statement  = await db.getOverdraftStatement(account.odAccountNumber, dates.statementStampDate);
-  const minPayment = statement?.MinimumPaymentBalance ?? account.searchResponse.paymentDueInfo?.[0]?.minimumPaymentBalance;
+  await runToPaymentDueDate(account);
+
+  await runEODUntil({
+    fromDate: dates.dpd1Date,
+    toDate:   dates.dpd1Date,
+    procs:    [PROCS.DEBT_HISTORY, PROCS.MANAGE_OVERDRAFT],
+  });
+
+  const statement = await db.getOverdraftStatement(account.odAccountNumber, dates.statementStampDate);
+  minPayment      = statement?.MinimumPaymentBalance ?? account.searchResponse.paymentDueInfo?.[0]?.minimumPaymentBalance;
   console.log(`  [TC-717] Full minimum payment: ${minPayment}`);
 
   await api.makeRepayment(account.linkedAccountNumber, minPayment, generateInstrumentNumber());
@@ -31,11 +38,13 @@ beforeAll(async () => {
   await api.waitForRepaymentProcessed({ accountNumber: account.odAccountNumber, expectedBalance });
 
   const dayAfterDPD1 = dayjs(dates.dpd1Date).add(1, 'day').format('YYYY-MM-DD');
-  await continueEODUntil({ lastDate: dates.dpd1Date, toDate: dayAfterDPD1, procs: [PROCS.DEBT_HISTORY, PROCS.MANAGE_OVERDRAFT] });
+  await runEODUntil({
+    fromDate: dayAfterDPD1,
+    toDate:   dayAfterDPD1,
+    procs:    [PROCS.RECONCILIATION, PROCS.DEBT_HISTORY, PROCS.MANAGE_OVERDRAFT],
+  });
   stateAfterPayment = await fetchBucketState(account.odAccountNumber, dayAfterDPD1);
 }, 900_000);
-
-afterAll(async () => { await db.disconnect(); });
 
 describe('CREDIT-TC-717 — Moves to Bucket 0 After Required Payment for Bucket 1', () => {
 
@@ -43,7 +52,12 @@ describe('CREDIT-TC-717 — Moves to Bucket 0 After Required Payment for Bucket 
   assertStatus(() => stateAfterPayment, STATUS.ACTIVE, 'Active');
   assertAccountReenabled(() => stateAfterPayment);
 
-  afterAll(() => {
+  test('After full payment: overdrawnAmount = original - minPayment', () => {
+    const expectedBalance = account.searchResponse.overdrawnAmount - minPayment;
+    expect(stateAfterPayment.searchResponse.overdrawnAmount).toBe(expectedBalance);
+  });
+
+  afterAll(async () => {
     console.log('\n══════════════════════════════════════════');
     console.log('  CREDIT-TC-717 — Summary');
     console.log('══════════════════════════════════════════');
@@ -52,5 +66,8 @@ describe('CREDIT-TC-717 — Moves to Bucket 0 After Required Payment for Bucket 
     console.log(`  DaysPastDue:   ${stateAfterPayment?.dbRecord?.DaysPastDue}`);
     console.log(`  Status:        ${stateAfterPayment?.searchResponse?.status}`);
     console.log('══════════════════════════════════════════\n');
+    // await db.deleteDebtHistoryByDate(account.drawdownDate);
+    // await db.deleteStatementByDate(account.drawdownDate);
+    await db.disconnect();
   });
 });

@@ -36,7 +36,7 @@ describe('CREDIT-TC-944 — Minimum Payment Calculation for Partial Repayment', 
     });
 
     cycleRunDate = dates.statementRunDate;
-    await runEODUntil({ fromDate: cycleRunDate, toDate: cycleRunDate, procs: [PROCS.DEBT_HISTORY, PROCS.BILLING_STATEMENT] });
+    await runEODUntil({ fromDate: cycleRunDate, toDate: cycleRunDate, procs: [PROCS.RECONCILIATION, PROCS.DEBT_HISTORY, PROCS.BILLING_STATEMENT] });
 
     const { overdrawnAmount, minimumPaymentPercentage } = searchAfterRepayment;
     totalMinimumPayment = calcMinimumPayment({

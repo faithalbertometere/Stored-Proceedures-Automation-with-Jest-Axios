@@ -54,7 +54,7 @@ describe('CREDIT-TC-692 — Interest-Only Repayment: Principal Remains, New Inte
     });
 
     // Day 3 — DebtHistory + InterestAccrual (new interest accrues on outstanding principal)
-    await runEODUntil({ fromDate: day3Date, toDate: day3Date, procs: [PROCS.DEBT_HISTORY, PROCS.INTEREST_ACCRUAL] });
+    await runEODUntil({ fromDate: day3Date, toDate: day3Date, procs: [PROCS.RECONCILIATION, PROCS.DEBT_HISTORY, PROCS.INTEREST_ACCRUAL] });
     // Day 4 — DebtHistory picks up day 3's new interest
     await runEODUntil({ fromDate: day4Date, toDate: day4Date, procs: [PROCS.DEBT_HISTORY] });
 

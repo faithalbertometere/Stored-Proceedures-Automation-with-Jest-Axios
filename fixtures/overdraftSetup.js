@@ -87,8 +87,9 @@ async function createCustomerAccount({ customerId, phone, email, lastname, other
 /**
  * Step 1c: Create a Smart OD account and return the OD account number
  */
-async function createSmartODAccount({ linkedAccountNumber, minimumPaymentPercentage }) {
-  const payload  = generateSmartODPayload({ linkedAccountNumber, minimumPaymentPercentage });
+async function createSmartODAccount({ linkedAccountNumber, minimumPaymentPercentage, incomeRecognitionStop, defaultArrearsBucket }) {
+  const payload  = generateSmartODPayload({ linkedAccountNumber, minimumPaymentPercentage, incomeRecognitionStop, defaultArrearsBucket });
+
   const response = await api.createSmartOD(payload);
 
   const odAccountNumber = response.successfulModels[0].accountNumber
@@ -154,14 +155,14 @@ async function searchOverdraft({ odAccountNumber }) {
  * @param {boolean} [options.withSearch]   Set false to skip SearchOverdraft call (default: true)
  * @returns {Promise<object>}              Account state object
  */
-async function setupOverdraftAccount({ drawAmount, minimumPaymentPercentage, withSearch = true } = {}) {
+async function setupOverdraftAccount({ drawAmount, minimumPaymentPercentage, incomeRecognitionStop, defaultArrearsBucket,  withSearch = true } = {}) {
   const amount = drawAmount ?? config.smartOD.drawAmount;
 
   const customer = await createCustomer();
 
   const { linkedAccountNumber } = await createCustomerAccount(customer);
 
-  const { odAccountNumber } = await createSmartODAccount({ linkedAccountNumber, minimumPaymentPercentage });
+  const { odAccountNumber } = await createSmartODAccount({ linkedAccountNumber, minimumPaymentPercentage, incomeRecognitionStop, defaultArrearsBucket });
 
   await optIn({ odAccountNumber });
 

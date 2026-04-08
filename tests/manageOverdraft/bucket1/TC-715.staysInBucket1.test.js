@@ -26,12 +26,15 @@ describe('CREDIT-TC-715 — Account Stays in Bucket 1 for DPD 1–30', () => {
     test('API: arrearsBucket = 1',() => { expect(ctx.stateAtDPD30.searchResponse.arrearsBucket).toBe(1); });
   });
 
-  afterAll(() => {
+  afterAll(async() => {
     console.log('\n══════════════════════════════════════════');
     console.log('  CREDIT-TC-715 — Boundary Summary');
     console.log('══════════════════════════════════════════');
+    console.log(`  OD Account:                ${ctx?.account?.odAccountNumber}`);
     console.log(`  dpd1Date  (DPD=1):  Bucket=${ctx?.stateAtDPD1?.dbRecord?.ArrearsBucket}`);
     console.log(`  dpd30Date (DPD=30): Bucket=${ctx?.stateAtDPD30?.dbRecord?.ArrearsBucket}`);
     console.log('══════════════════════════════════════════\n');
+    await db.deleteDebtHistoryByDate(ctx.account.drawdownDate);
+    await db.deleteStatementByDate(ctx.account.drawdownDate);
   });
 });

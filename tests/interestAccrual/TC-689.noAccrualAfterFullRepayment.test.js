@@ -43,7 +43,7 @@ describe('CREDIT-TC-689 — No Interest Accrual After Full Repayment', () => {
       });
     
       // Day 3 — EOD after repayment
-      await runEODUntil({ fromDate: day3Date, toDate: day3Date, procs: [PROCS.DEBT_HISTORY, PROCS.INTEREST_ACCRUAL] });
+      await runEODUntil({ fromDate: day3Date, toDate: day3Date, procs: [PROCS.RECONCILIATION, PROCS.DEBT_HISTORY, PROCS.INTEREST_ACCRUAL] });
     
       [recordDay3, activityLogDay3] = await Promise.all([
         db.getDebtHistoryRecord(account.odAccountNumber, day3Date),

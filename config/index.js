@@ -71,6 +71,7 @@ module.exports = {
   },
 
   procs: {
+  RECONCILIATION:    process.env.RECONCILIATION,
   DEBT_HISTORY:      process.env.DEBT_HISTORY,
   INTEREST_ACCRUAL:  process.env.INTEREST_ACCRUAL,
   BILLING_STATEMENT: process.env.BILLING_STATEMENT,

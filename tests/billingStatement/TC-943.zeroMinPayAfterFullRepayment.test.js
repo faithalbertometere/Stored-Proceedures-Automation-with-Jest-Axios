@@ -36,7 +36,7 @@ describe('CREDIT-TC-943 — Minimum Payment is 0 After Full Repayment', () => {
 
     cycleRunDate = dates.statementRunDate;
    
-    await runEODUntil({ fromDate: cycleRunDate, toDate: cycleRunDate, procs: [PROCS.DEBT_HISTORY, PROCS.BILLING_STATEMENT] });
+    await runEODUntil({ fromDate: cycleRunDate, toDate: cycleRunDate, procs: [PROCS.RECONCILIATION, PROCS.DEBT_HISTORY, PROCS.BILLING_STATEMENT] });
 
     statement = await db.getOverdraftStatement(account.odAccountNumber, dates.statementStampDate);
   }, 600_000);

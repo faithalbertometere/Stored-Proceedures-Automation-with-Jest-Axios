@@ -114,7 +114,7 @@ describe('CREDIT-TC-694 — New Drawdown After Repayment: Interest Accrues on Up
     ]);
 
     // ── Day 3 + Day 4 EOD — sequential ───────────────────────────────────
-    await runEODUntil({ fromDate: day3Date, toDate: day3Date, procs: [PROCS.DEBT_HISTORY, PROCS.INTEREST_ACCRUAL] });
+    await runEODUntil({ fromDate: day3Date, toDate: day3Date, procs: [PROCS.RECONCILIATION, PROCS.DEBT_HISTORY, PROCS.INTEREST_ACCRUAL] });
     await runEODUntil({ fromDate: day4Date, toDate: day4Date, procs: [PROCS.DEBT_HISTORY] });
 
     [recordDay4Partial, recordDay4Full, activityLogDay4Partial, activityLogDay4Full] = await Promise.all([

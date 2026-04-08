@@ -22,7 +22,7 @@ describe('CREDIT-TC-813 — Drawdowns Stored in OverdraftDebtBreakdown Table', (
     account    = await setupOverdraftAccount();
     eodFinDate = account.drawdownDate;
 
-    await runEODUntil({ fromDate: eodFinDate, toDate: eodFinDate, procs: [PROCS.DEBT_HISTORY] });
+    await runEODUntil({ fromDate: eodFinDate, toDate: eodFinDate, procs: [PROCS.RECONCILIATION, PROCS.DEBT_HISTORY, PROCS.INTEREST_ACCRUAL] });
 
     [breakdownRecords, searchResponse] = await Promise.all([
       db.getDebtBreakdownRecords(account.odAccountNumber, eodFinDate),
@@ -39,11 +39,12 @@ describe('CREDIT-TC-813 — Drawdowns Stored in OverdraftDebtBreakdown Table', (
   });
 
   test('UnpaidOverdraftPrincipal = drawdown amount', () => {
-    expect(breakdownRecords[0].UnpaidOverdraftPrincipal).toBe(account.searchResponse.overdrawnAmount);
+    expect(breakdownRecords[1].UnpaidOverdraftPrincipal).toBe(account.searchResponse.overdrawnAmount);
   });
 
   test('UnpaidOverdraftPrincipal matches overdrawnAmount from SearchOverdraft', () => {
-    expect(breakdownRecords[0].UnpaidOverdraftPrincipal).toBe(searchResponse.overdrawnAmount);
+    expect(breakdownRecords[1].UnpaidOverdraftPrincipal).toBe(searchResponse.overdrawnAmount);
+    expect(breakdownRecords[1].RepaymentStatus).toBe(1);
   });
 
   test('RealDate matches the EOD financial date', () => {
@@ -52,9 +53,10 @@ describe('CREDIT-TC-813 — Drawdowns Stored in OverdraftDebtBreakdown Table', (
 
   test('UnpaidOverdraftInterest > 0 (interest started accruing)', () => {
     expect(breakdownRecords[0].UnpaidOverdraftInterest).toBeGreaterThan(0);
+    expect(breakdownRecords[0].RepaymentStatus).toBe(1);
   });
 
-  afterAll(() => {
+  afterAll(async() => {
     console.log('\n══════════════════════════════════════════');
     console.log('  CREDIT-TC-813 — Summary');
     console.log('══════════════════════════════════════════');
@@ -64,5 +66,6 @@ describe('CREDIT-TC-813 — Drawdowns Stored in OverdraftDebtBreakdown Table', (
     console.log(`  Principal:   ${breakdownRecords?.[0]?.UnpaidOverdraftPrincipal}`);
     console.log(`  Interest:    ${breakdownRecords?.[0]?.UnpaidOverdraftInterest}`);
     console.log('══════════════════════════════════════════\n');
+    await db.deleteDebtHistoryByDate(eodFinDate);
   });
 });
